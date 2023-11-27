@@ -1,60 +1,53 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import PostForm from "../components/PostForm";
+import { deleteDoc, doc, getDoc, updateDoc } from "firebase/firestore";
+import { postsRef } from "../firebase-config";
 
 export default function UpdatePage() {
-    const [post, setPost] = useState();
-    const params = useParams();
-    const navigate = useNavigate();
-    const url = `${import.meta.env.VITE_FIREBASE_DB_URL}/posts/${params.postId}.json`;
+  const [post, setPost] = useState();
+  const params = useParams();
+  const navigate = useNavigate();
 
-    useEffect(() => {
-        async function getPost() {
-            const response = await fetch(url);
-            const data = await response.json();
-            setPost(data);
-        }
-
-        getPost();
-    }, [url]);
-
-    async function savePost(postToUpdate) {
-        postToUpdate.uid = post.uid;
-        const response = await fetch(url, {
-            method: "PUT",
-            body: JSON.stringify(postToUpdate)
-        });
-        if (response.ok) {
-            const data = await response.json();
-            console.log("Post updated: ", data);
-            navigate("/");
-        } else {
-            console.log("Sorry, something went wrong");
-        }
+  useEffect(() => {
+    async function getPost() {
+      const docRef = doc(postsRef, params.postId);
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        setPost(docSnap.data());
+      }
     }
 
-    async function deletePost() {
-        const confirmDelete = window.confirm(`Do you want to delete post, ${post.title}?`);
-        if (confirmDelete) {
-            const response = await fetch(url, {
-                method: "DELETE"
-            });
-            if (response.ok) {
-                console.log("Post deleted");
-                navigate("/");
-            } else {
-                console.log("Sorry, something went wrong");
-            }
-        }
-    }
+    getPost();
+  }, [params.postId]);
 
-    return (
-        <section className="page">
-            <h1>Update Post</h1>
-            <PostForm post={post} savePost={savePost} />
-            <button className="btn-delete" onClick={deletePost}>
-                Delete Post
-            </button>
-        </section>
+  //fetching post to update
+
+  async function savePost(postToUpdate) {
+    postToUpdate.uid = post.uid;
+    const docRef = doc(postsRef, params.postId);
+    await updateDoc(docRef, postToUpdate);
+    navigate("/");
+  }
+
+  async function deletePost() {
+    const confirmDelete = window.confirm(
+      `Do you want to delete post, ${post.title}?`
     );
+    if (confirmDelete) {
+      const docRef = doc(postsRef, params.postId);
+      await deleteDoc(docRef);
+      navigate("/");
+    }
+  }
+
+  return (
+    <section className="page">
+      <h1>Update Post</h1>
+      <PostForm post={post} savePost={savePost} />
+      <button className="btn-delete" onClick={deletePost}>
+        Delete Post
+      </button>
+    </section>
+  );
 }
